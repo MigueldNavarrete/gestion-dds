@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de DDs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --border: #E2E0D8;
+  --border-strong: #C8C6BC;
+  --text: #1A1916;
+  --text-muted: #6B6960;
+  --text-hint: #9E9C94;
+  --accent: #1A1916;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+
+  --s-pendiente: #E8E6DF;
+  --s-pendiente-t: #4A4840;
+  --s-sin-fecha: #FDF0D5;
+  --s-sin-fecha-t: #7A5200;
+  --s-qa: #D6EAF7;
+  --s-qa-t: #0C3D5E;
+  --s-llamada: #FAE0E8;
+  --s-llamada-t: #6B1533;
+  --s-predd: #D5F0E5;
+  --s-predd-t: #0A4226;
+  --s-fdd: #E8E0F7;
+  --s-fdd-t: #2D1A5E;
+  --s-completada: #D8EDD5;
+  --s-completada-t: #1A4015;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.header {
+  background: var(--text);
+  color: #F5F4F0;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.logo { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.05em; }
+.header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+.header-subtitle { font-size: 12px; color: rgba(255,255,255,0.5); font-family: var(--mono); }
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+/* TABS */
+.tabs { display: flex; background: rgba(255,255,255,0.1); border-radius: 4px; padding: 2px; }
+.tab {
+  padding: 4px 14px; border-radius: 3px; font-size: 12px; font-family: var(--mono);
+  cursor: pointer; border: none; background: transparent; color: rgba(255,255,255,0.6);
+  transition: all 0.15s;
+}
+.tab.active { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* MAIN */
+.main { padding: 1.5rem 2rem; max-width: 1600px; margin: 0 auto; }
+
+/* METRICS */
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.metric {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+}
+.metric-label { font-size: 11px; font-family: var(--mono); color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.metric-val { font-size: 28px; font-family: var(--mono); font-weight: 500; line-height: 1; }
+.metric-val.urgent { color: #C0392B; }
+
+/* ALERT */
+.alert {
+  background: #FEF3CD;
+  border: 0.5px solid #F0C040;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 1.25rem;
+  font-size: 13px;
+  color: #7A5200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-dot { width: 6px; height: 6px; border-radius: 50%; background: #F0C040; flex-shrink: 0; }
+
+/* FILTERS */
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filters input, .filters select {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+}
+.filters input:focus, .filters select:focus { border-color: var(--text); }
+.filters input { min-width: 180px; }
+.btn {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 0.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg); }
+.btn-dark {
+  background: var(--text);
+  color: #F5F4F0;
+  border-color: var(--text);
+}
+.btn-dark:hover { background: #333; }
+
+/* KANBAN */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(180px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+.kanban-col {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 300px;
+}
+.kanban-col-header {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.col-count {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+/* DD CARD */
+.dd-card {
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  background: var(--bg);
+  transition: border-color 0.12s, transform 0.1s;
+  position: relative;
+}
+.dd-card:hover { border-color: var(--text); transform: translateY(-1px); }
+.dd-card.urgent { border-left: 2px solid #C0392B; }
+.dd-card-name { font-size: 13px; font-weight: 500; margin-bottom: 6px; line-height: 1.3; }
+.dd-card-row { font-size: 11px; font-family: var(--mono); color: var(--text-muted); margin-bottom: 3px; }
+.dd-card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.tag-apa { background: #D6EAF7; color: #0C3D5E; }
+.tag-spa { background: #D5F0E5; color: #0A4226; }
+.tag-urgent { background: #FADBD8; color: #922B21; }
+.tag-cliente {
+  background: var(--border);
+  color: var(--text-muted);
+}
+.toque-date { font-size: 10px; font-family: var(--mono); color: #C0392B; margin-top: 4px; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 0.5px solid var(--border); border-radius: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-hint);
+  border-bottom: 0.5px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg);
+}
+td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+tr.urgent-row td:first-child { border-left: 2px solid #C0392B; }
+.status-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.edit-btn {
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: all 0.12s;
+}
+.edit-btn:hover { border-color: var(--text); color: var(--text); background: var(--bg); }
+
+/* MODAL */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,25,22,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 6px;
+  width: 600px;
+  max-width: 96vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 1.75rem;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 0.5px solid var(--border);
+}
+.modal-title { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 20px; line-height: 1; padding: 2px; }
+.modal-close:hover { color: var(--text); }
+.form-section { margin-bottom: 1.25rem; }
+.form-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-hint);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 0.5px solid var(--border);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+.form-group input, .form-group select, .form-group textarea {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.12s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--text); background: var(--surface); }
+.form-group textarea { resize: vertical; min-height: 64px; }
+.modal-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+  align-items: center;
+}
+.btn-danger { color: #922B21; border-color: #F5B7B1; }
+.btn-danger:hover { background: #FADBD8; }
+.saving-msg { font-family: var(--mono); font-size: 11px; color: var(--text-hint); }
+
+/* LOADING */
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 200px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-hint);
+  gap: 10px;
+}
+.spinner {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .main { padding: 1rem; }
+  .metrics { grid-template-columns: repeat(3, 1fr); }
+  .header { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo">DD · TRACKER</span>
+    <div class="header-divider"></div>
+    <span class="header-subtitle" id="header-count">cargando...</span>
+  </div>
+  <div class="header-right">
+    <div class="tabs">
+      <button class="tab active" onclick="setView('kanban')" id="tab-kanban">Kanban</button>
+      <button class="tab" onclick="setView('tabla')" id="tab-tabla">Tabla</button>
+    </div>
+    <button class="btn btn-dark" onclick="openNew()" style="margin-left:8px">+ Nueva DD</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="metrics" id="metrics"></div>
+  <div id="alert-area"></div>
+  <div class="filters">
+    <input type="text" id="search" placeholder="Buscar empresa..." oninput="applyFilters()">
+    <select id="filter-cliente" onchange="applyFilters()">
+      <option value="">Todos los clientes</option>
+      <option>Unavets</option>
+      <option>Qida</option>
+      <option>Rayan</option>
+    </select>
+    <select id="filter-resp" onchange="applyFilters()">
+      <option value="">Todo el equipo</option>
+    </select>
+    <select id="filter-status" onchange="applyFilters()">
+      <option value="">Todos los estados</option>
+    </select>
+    <button class="btn" onclick="clearFilters()">✕ Limpiar</button>
+  </div>
+  <div id="view-kanban"></div>
+  <div id="view-tabla" style="display:none"></div>
+</div>
+
+<div id="modal-area"></div>
+
+<script>
+const SUPABASE_URL = 'https://qknweauvxlcfuhlknlen.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Ptrc1ayFlWB3Qa-o85nNLw_fwChWhAH';
+
+const STATUSES = [
+  { id: 'pendiente_info',    label: 'Pendiente info',         bg: 'var(--s-pendiente)', color: 'var(--s-pendiente-t)' },
+  { id: 'info_sin_fecha',    label: 'Info sin fecha',         bg: 'var(--s-sin-fecha)',  color: 'var(--s-sin-fecha-t)' },
+  { id: 'qa_en_proceso',     label: 'Q&A en proceso',         bg: 'var(--s-qa)',         color: 'var(--s-qa-t)' },
+  { id: 'pendientes_llamada',label: 'Pendientes llamada',     bg: 'var(--s-llamada)',    color: 'var(--s-llamada-t)' },
+  { id: 'pre_dd_lista',      label: 'Pre DD lista',           bg: 'var(--s-predd)',      color: 'var(--s-predd-t)' },
+  { id: 'fdd_en_curso',      label: 'FDD en curso',           bg: 'var(--s-fdd)',        color: 'var(--s-fdd-t)' },
+  { id: 'completada',        label: 'Completada',             bg: 'var(--s-completada)', color: 'var(--s-completada-t)' },
+];
+
+const fmt = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
+const isUrgent = d => {
+  const ref = d.fecha_objetivo_toque || d.fecha_objetivo_qa;
+  if (!ref || d.status === 'completada') return false;
+  return new Date(ref) < new Date(new Date().toDateString());
+};
+const getStatus = id => STATUSES.find(s => s.id === id) || STATUSES[0];
+
+let allDDs = [];
+let filtered = [];
+let currentView = 'kanban';
+
+async function api(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : (method === 'PATCH' ? 'return=representation' : ''),
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
+  if (!r.ok) { const e = await r.text(); throw new Error(e); }
+  if (method === 'DELETE') return null;
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function loadDDs() {
+  document.getElementById('view-kanban').innerHTML = '<div class="loading"><div class="spinner"></div>Cargando DDs...</div>';
+  allDDs = await api('dds?order=id.asc');
+  buildFilterOptions();
+  applyFilters();
+}
+
+function buildFilterOptions() {
+  const resps = [...new Set(allDDs.flatMap(d => [d.resp1, d.resp2]).filter(Boolean))].sort();
+  const rSelect = document.getElementById('filter-resp');
+  rSelect.innerHTML = '<option value="">Todo el equipo</option>' + resps.map(r => `<option>${r}</option>`).join('');
+  const sSelect = document.getElementById('filter-status');
+  sSelect.innerHTML = '<option value="">Todos los estados</option>' + STATUSES.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+}
+
+function applyFilters() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const cliente = document.getElementById('filter-cliente').value;
+  const resp = document.getElementById('filter-resp').value;
+  const status = document.getElementById('filter-status').value;
+  filtered = allDDs.filter(d => {
+    if (search && !d.nombre.toLowerCase().includes(search)) return false;
+    if (cliente && d.cliente !== cliente) return false;
+    if (resp && d.resp1 !== resp && d.resp2 !== resp) return false;
+    if (status && d.status !== status) return false;
+    return true;
+  });
+  renderAll();
+}
+
+function clearFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filter-cliente').value = '';
+  document.getElementById('filter-resp').value = '';
+  document.getElementById('filter-status').value = '';
+  applyFilters();
+}
+
+function renderAll() {
+  renderMetrics();
+  renderAlerts();
+  updateHeaderCount();
+  if (currentView === 'kanban') renderKanban();
+  else renderTabla();
+}
+
+function updateHeaderCount() {
+  const urgent = allDDs.filter(isUrgent).length;
+  document.getElementById('header-count').textContent =
+    allDDs.length + ' DDs activas' + (urgent > 0 ? ' · ' + urgent + ' urgentes' : '');
+}
+
+function renderMetrics() {
+  const urgent = allDDs.filter(isUrgent).length;
+  const byS = {};
+  allDDs.forEach(d => { byS[d.status] = (byS[d.status] || 0) + 1; });
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Total DDs</div><div class="metric-val">${allDDs.length}</div></div>
+    <div class="metric"><div class="metric-label">Urgentes</div><div class="metric-val ${urgent > 0 ? 'urgent' : ''}">${urgent}</div></div>
+    <div class="metric"><div class="metric-label">Pendiente info</div><div class="metric-val">${(byS['pendiente_info'] || 0) + (byS['info_sin_fecha'] || 0)}</div></div>
+    <div class="metric"><div class="metric-label">En proceso</div><div class="metric-val">${(byS['qa_en_proceso'] || 0) + (byS['pendientes_llamada'] || 0)}</div></div>
+    <div class="metric"><div class="metric-label">Pre DD / FDD</div><div class="metric-val">${(byS['pre_dd_lista'] || 0) + (byS['fdd_en_curso'] || 0)}</div></div>
+  `;
+}
+
+function renderAlerts() {
+  const urgent = allDDs.filter(isUrgent);
+  document.getElementById('alert-area').innerHTML = urgent.length === 0 ? '' :
+    `<div class="alert"><div class="alert-dot"></div><strong>${urgent.length} DD${urgent.length > 1 ? 's' : ''} con fecha vencida:</strong>&nbsp;${urgent.map(d => d.nombre).join(', ')}</div>`;
+}
+
+function renderKanban() {
+  const cols = STATUSES.map(s => {
+    const cards = filtered.filter(d => d.status === s.id);
+    return `<div class="kanban-col">
+      <div class="kanban-col-header">
+        <span>${s.label}</span>
+        <span class="col-count">${cards.length}</span>
+      </div>
+      ${cards.map(d => {
+        const urgent = isUrgent(d);
+        const toque = d.fecha_objetivo_toque;
+        return `<div class="dd-card${urgent ? ' urgent' : ''}" onclick="openEdit(${d.id})">
+          <div class="dd-card-name">${d.nombre}</div>
+          <div class="dd-card-row">${d.cliente}</div>
+          <div class="dd-card-row">${d.resp1}${d.resp2 ? ' / ' + d.resp2 : ''}</div>
+          <div class="dd-card-tags">
+            <span class="tag tag-${d.tipo.toLowerCase()}">${d.tipo}</span>
+            ${urgent ? '<span class="tag tag-urgent">URGENTE</span>' : ''}
+          </div>
+          ${toque ? `<div class="toque-date">↑ Toque: ${fmt(toque)}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('view-kanban').innerHTML = `<div class="kanban">${cols}</div>`;
+}
+
+function renderTabla() {
+  const rows = filtered.map(d => {
+    const s = getStatus(d.status);
+    const urgent = isUrgent(d);
+    const fechaRef = d.fecha_objetivo_toque || d.fecha_objetivo_qa;
+    return `<tr class="${urgent ? 'urgent-row' : ''}">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-hint)">${d.id}</td>
+      <td><strong style="font-weight:500">${d.nombre}</strong></td>
+      <td style="font-family:var(--mono);font-size:12px">${d.cliente}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">${d.resp1}${d.resp2 ? '/' + d.resp2 : ''}</td>
+      <td><span class="tag tag-${d.tipo.toLowerCase()}">${d.tipo}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">${fmt(d.kick_off)}</td>
+      <td><span class="status-pill" style="background:${s.bg};color:${s.color}">${s.label}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;${urgent ? 'color:#922B21;font-weight:500' : 'color:var(--text-muted)'}">${fechaRef ? fmt(fechaRef) : '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.detalle_pendientes || d.notas || '').replace(/"/g, '')}">${d.detalle_pendientes || d.notas || '—'}</td>
+      <td><button class="edit-btn" onclick="openEdit(${d.id})">editar</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('view-tabla').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Empresa</th><th>Cliente</th><th>Equipo</th><th>Tipo</th>
+          <th>Kick Off</th><th>Estado</th><th>Fecha objetivo</th><th>Pendientes</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('tab-kanban').className = 'tab' + (v === 'kanban' ? ' active' : '');
+  document.getElementById('tab-tabla').className = 'tab' + (v === 'tabla' ? ' active' : '');
+  document.getElementById('view-kanban').style.display = v === 'kanban' ? '' : 'none';
+  document.getElementById('view-tabla').style.display = v === 'tabla' ? '' : 'none';
+  renderAll();
+}
+
+function openNew() { showModal(null); }
+function openEdit(id) { showModal(allDDs.find(d => d.id === id)); }
+
+function showModal(dd) {
+  const isNew = !dd;
+  const d = dd || {};
+  const statusOpts = STATUSES.map(s => `<option value="${s.id}" ${(d.status || 'pendiente_info') === s.id ? 'selected' : ''}>${s.label}</option>`).join('');
+
+  document.getElementById('modal-area').innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-title">${isNew ? '+ Nueva DD' : d.nombre}</span>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Identificación</div>
+          <div class="form-grid">
+            <div class="form-group full"><label>Empresa</label><input id="f-nombre" value="${d.nombre || ''}" placeholder="Nombre de la empresa"></div>
+            <div class="form-group">
+              <label>Cliente final</label>
+              <select id="f-cliente">
+                ${['Unavets','Qida','Rayan'].map(c => `<option value="${c}" ${d.cliente === c ? 'selected' : ''}>${c}</option>`).join('')}
+                <option value="${(!['Unavets','Qida','Rayan'].includes(d.cliente) && d.cliente) ? d.cliente : 'Otro'}" ${!['Unavets','Qida','Rayan'].includes(d.cliente) && d.cliente ? 'selected' : ''}>Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="f-tipo">
+                <option value="SPA" ${d.tipo === 'SPA' ? 'selected' : ''}>SPA</option>
+                <option value="APA" ${d.tipo === 'APA' ? 'selected' : ''}>APA</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Responsable 1</label><input id="f-resp1" value="${d.resp1 || ''}"></div>
+            <div class="form-group"><label>Responsable 2</label><input id="f-resp2" value="${d.resp2 || ''}"></div>
+            <div class="form-group"><label>Kick Off</label><input type="date" id="f-kickoff" value="${d.kick_off || ''}"></div>
+            <div class="form-group"><label>Estado actual</label><select id="f-status">${statusOpts}</select></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Proceso</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Info recibida</label>
+              <select id="f-info">
+                <option value="Sí" ${d.info_recibida === 'Sí' ? 'selected' : ''}>Sí</option>
+                <option value="No" ${d.info_recibida !== 'Sí' ? 'selected' : ''}>No</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Fecha recepción info</label><input type="date" id="f-fecha-info" value="${d.fecha_info || ''}"></div>
+            <div class="form-group"><label>Obj. envío Q&A</label><input type="date" id="f-obj-qa" value="${d.fecha_objetivo_qa || ''}"></div>
+            <div class="form-group"><label>Real envío Q&A</label><input type="date" id="f-real-qa" value="${d.fecha_real_qa || ''}"></div>
+            <div class="form-group"><label>Respuesta Q&A</label><input type="date" id="f-resp-qa" value="${d.fecha_resp_qa || ''}"></div>
+            <div class="form-group"><label>Fecha llamada</label><input type="date" id="f-llamada" value="${d.fecha_llamada || ''}"></div>
+            <div class="form-group"><label>Obj. toque al vendedor</label><input type="date" id="f-toque" value="${d.fecha_objetivo_toque || ''}"></div>
+            <div class="form-group"><label>Aviso asesor</label><input id="f-asesor" value="${d.aviso_asesor || ''}"></div>
+            <div class="form-group full"><label>Pendientes / detalle</label><textarea id="f-pendientes">${d.detalle_pendientes || ''}</textarea></div>
+            <div class="form-group full"><label>Notas</label><textarea id="f-notas">${d.notas || ''}</textarea></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Pre DD / FDD</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Pre DD entregada</label>
+              <select id="f-predd">
+                <option value="false" ${!d.pre_dd ? 'selected' : ''}>No</option>
+                <option value="true" ${d.pre_dd ? 'selected' : ''}>Sí</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Fecha Pre DD</label><input type="date" id="f-fecha-predd" value="${d.fecha_pre_dd || ''}"></div>
+            <div class="form-group"><label>Continúa FDD</label>
+              <select id="f-fdd">
+                <option value="false" ${!d.continua_fdd ? 'selected' : ''}>No</option>
+                <option value="true" ${d.continua_fdd ? 'selected' : ''}>Sí</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Fecha respuesta FDD</label><input type="date" id="f-fecha-fdd" value="${d.fecha_resp_fdd || ''}"></div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          ${!isNew ? `<button class="btn btn-danger" onclick="deleteDD(${d.id})">Eliminar</button>` : ''}
+          <span style="flex:1"></span>
+          <span class="saving-msg" id="saving-msg"></span>
+          <button class="btn" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-dark" onclick="saveDD(${d.id || 'null'}, ${isNew})">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function getVal(id) { return document.getElementById(id)?.value || null; }
+function getDate(id) { const v = getVal(id); return v || null; }
+
+async function saveDD(id, isNew) {
+  const msg = document.getElementById('saving-msg');
+  msg.textContent = 'Guardando...';
+  const payload = {
+    nombre: getVal('f-nombre'),
+    cliente: getVal('f-cliente'),
+    tipo: getVal('f-tipo'),
+    resp1: getVal('f-resp1'),
+    resp2: getVal('f-resp2'),
+    kick_off: getDate('f-kickoff'),
+    status: getVal('f-status'),
+    info_recibida: getVal('f-info'),
+    fecha_info: getDate('f-fecha-info'),
+    fecha_objetivo_qa: getDate('f-obj-qa'),
+    fecha_real_qa: getDate('f-real-qa'),
+    fecha_resp_qa: getDate('f-resp-qa'),
+    fecha_llamada: getDate('f-llamada'),
+    fecha_objetivo_toque: getDate('f-toque'),
+    aviso_asesor: getVal('f-asesor'),
+    detalle_pendientes: getVal('f-pendientes'),
+    notas: getVal('f-notas'),
+    pre_dd: getVal('f-predd') === 'true',
+    fecha_pre_dd: getDate('f-fecha-predd'),
+    continua_fdd: getVal('f-fdd') === 'true',
+    fecha_resp_fdd: getDate('f-fecha-fdd'),
+  };
+  try {
+    if (isNew) {
+      await api('dds', 'POST', payload);
+    } else {
+      await api(`dds?id=eq.${id}`, 'PATCH', payload);
+    }
+    closeModal();
+    await loadDDs();
+  } catch(e) {
+    msg.textContent = 'Error al guardar';
+    console.error(e);
+  }
+}
+
+async function deleteDD(id) {
+  if (!confirm('¿Eliminar esta DD? Esta acción no se puede deshacer.')) return;
+  try {
+    await api(`dds?id=eq.${id}`, 'DELETE');
+    closeModal();
+    await loadDDs();
+  } catch(e) { alert('Error al eliminar'); }
+}
+
+function closeModal() { document.getElementById('modal-area').innerHTML = ''; }
+
+loadDDs();
+</script>
+</body>
+</html>
